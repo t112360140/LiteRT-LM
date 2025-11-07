@@ -1,5 +1,5 @@
 cc_binary(
-    name = "openai_api_server",
+    name = "literlm_api_server",
     srcs = ["main.cc"],
     deps = [
         "//runtime/engine:litert_lm_lib",
