@@ -205,6 +205,7 @@ class ApiServer {
 
 int main(int argc, char* argv[]) {
   absl::ParseCommandLine(argc, argv);
+  absl::SetMinLogLevel(absl::LogSeverityAtLeast::kError);
   const std::string model_path = absl::GetFlag(FLAGS_model_path);
   if (model_path.empty()) {
     std::cerr << "Error: --model_path is required." << std::endl;
