@@ -1,0 +1,11 @@
+--- litert/cc/BUILD	2025-10-27 11:30:40.000000000 -0700
++++ litert/cc/BUILD	2025-10-27 15:36:53.130802685 -0700
+@@ -1257,7 +1257,6 @@
+         "//litert/cc/dynamic_runtime/options:litert_cpu_options",
+         "//litert/cc/dynamic_runtime/options:litert_gpu_options",
+         "//litert/cc/dynamic_runtime/options:litert_qualcomm_options",
+-        "//litert/cc/dynamic_runtime/options:litert_intel_openvino_options",
+         "//litert/cc/dynamic_runtime/options:litert_runtime_options",
+         # Other (static) C++ API targets.
+         ":litert_any",
+
