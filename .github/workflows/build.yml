@@ -21,13 +21,7 @@ jobs:
     - name: Checkout main repository
       uses: actions/checkout@v4
       with:
-        path: literlm_openai_api
-
-    - name: Checkout LiteRT-LM repository
-      uses: actions/checkout@v4
-      with:
-        repository: google-ai-edge/LiteRT-LM
-        path: LiteRT-LM
+        path: ./
 
     - name: Setup Bazelisk
       uses: bazelbuild/setup-bazelisk@v3
@@ -56,19 +50,18 @@ jobs:
     # --- 開始編譯 ---
     - name: Build (Linux)
       if: runner.os == 'Linux'
-      working-directory: literlm_openai_api
+      working-directory: ./
       # 使用我們之前驗證過的完整指令
       run: |
         bazel build \
-          --java_runtime_version=remotejdk_11 \
-          //main:openai_api_server
+          --java_runtime_version=remotejdk_11 //literlm_openai_api:literlm_api_server
 
     - name: Build (Windows)
       if: runner.os == 'Windows'
-      working-directory: literlm_openai_api
+      working-directory: ./
       shell: bash
       run: |
-        bazel build --java_runtime_version=remotejdk_11 //main:openai_api_server
+        bazel build --java_runtime_version=remotejdk_11 //literlm_openai_api:literlm_api_server
 
     # --- 打包與上傳結果 ---
     - name: Prepare artifact directory
@@ -76,13 +69,13 @@ jobs:
       run: |
         mkdir -p dist
         if [ "${{ runner.os }}" == "Linux" ]; then
-          cp literlm_openai_api/bazel-bin/main/openai_api_server dist/openai_api_server_linux
+          cp literlm_openai_api/bazel-bin/literlm_openai_api/literlm_api_server dist/literlm_api_server_linux
         else
-          cp literlm_openai_api/bazel-bin/main/openai_api_server.exe dist/openai_api_server_windows.exe
+          cp literlm_openai_api/bazel-bin/literlm_openai_api/literlm_api_server.exe dist/literlm_api_server_windows.exe
         fi
 
     - name: Upload binary artifact
       uses: actions/upload-artifact@v4
       with:
-        name: openai-api-server-${{ matrix.os }}
+        name: literlm-api-server-${{ matrix.os }}
         path: dist/
