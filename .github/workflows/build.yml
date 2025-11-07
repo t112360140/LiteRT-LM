@@ -48,13 +48,6 @@ jobs:
       run: git config --global core.symlinks true
 
     # --- 開始編譯 ---
-    - name: Build (Linux)
-      if: runner.os == 'Linux'
-      working-directory: ./
-      # 使用我們之前驗證過的完整指令
-      run: |
-        bazel build \
-          --java_runtime_version=remotejdk_11 //literlm_openai_api:literlm_api_server
 
     - name: Build (Windows)
       if: runner.os == 'Windows'
@@ -62,6 +55,14 @@ jobs:
       shell: bash
       run: |
         bazel build --java_runtime_version=remotejdk_11 //literlm_openai_api:literlm_api_server
+
+    # - name: Build (Linux)
+    #   if: runner.os == 'Linux'
+    #   working-directory: ./
+    #   # 使用我們之前驗證過的完整指令
+    #   run: |
+    #     bazel build \
+    #       --java_runtime_version=remotejdk_11 //literlm_openai_api:literlm_api_server
 
     # --- 打包與上傳結果 ---
     - name: Prepare artifact directory
