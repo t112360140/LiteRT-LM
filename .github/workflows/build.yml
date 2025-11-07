@@ -12,6 +12,10 @@ jobs:
   build:
     name: Build on ${{ matrix.os }}
     runs-on: ${{ matrix.os }}
+    env:
+      # Clear ANDROID_NDK_HOME as Windows_x64 has NDK where jobs don't have permission for
+      # androidndk rulesto create symlinks.
+      ANDROID_NDK_HOME:
     strategy:
       matrix:
         # 同時在 Ubuntu 22.04 和最新版 Windows 上執行
