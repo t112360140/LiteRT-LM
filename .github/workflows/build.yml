@@ -54,7 +54,7 @@ jobs:
       working-directory: ./
       shell: bash
       run: |
-        bazel build --java_runtime_version=remotejdk_11 //literlm_openai_api:literlm_api_server
+        bazel build --java_runtime_version=remotejdk_11 /literlm_openai_api:literlm_api_server
 
     - name: Build (Linux)
       if: runner.os == 'Linux'
