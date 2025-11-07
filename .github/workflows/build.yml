@@ -15,7 +15,7 @@ jobs:
     strategy:
       matrix:
         # 同時在 Ubuntu 22.04 和最新版 Windows 上執行
-        os: [ubuntu-22.04, windows-latest]
+        os: [windows-latest] # ubuntu-22.04, 
 
     steps:
     - name: Checkout main repository
@@ -56,13 +56,13 @@ jobs:
       run: |
         bazel build --java_runtime_version=remotejdk_11 //literlm_openai_api:literlm_api_server
 
-    # - name: Build (Linux)
-    #   if: runner.os == 'Linux'
-    #   working-directory: ./
-    #   # 使用我們之前驗證過的完整指令
-    #   run: |
-    #     bazel build \
-    #       --java_runtime_version=remotejdk_11 //literlm_openai_api:literlm_api_server
+    - name: Build (Linux)
+      if: runner.os == 'Linux'
+      working-directory: ./
+      # 使用我們之前驗證過的完整指令
+      run: |
+        bazel build \
+          --java_runtime_version=remotejdk_11 //literlm_openai_api:literlm_api_server
 
     # --- 打包與上傳結果 ---
     - name: Prepare artifact directory
