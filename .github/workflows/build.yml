@@ -1,0 +1,88 @@
+name: Build LiteRT-LM Server
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+  # 允許手動觸發
+  workflow_dispatch:
+
+jobs:
+  build:
+    name: Build on ${{ matrix.os }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        # 同時在 Ubuntu 22.04 和最新版 Windows 上執行
+        os: [ubuntu-22.04, windows-latest]
+
+    steps:
+    - name: Checkout main repository
+      uses: actions/checkout@v4
+      with:
+        path: literlm_openai_api
+
+    - name: Checkout LiteRT-LM repository
+      uses: actions/checkout@v4
+      with:
+        repository: google-ai-edge/LiteRT-LM
+        path: LiteRT-LM
+
+    - name: Setup Bazelisk
+      uses: bazelbuild/setup-bazelisk@v3
+
+    # --- Linux 特定的設定步驟 ---
+    - name: Install Clang 16 (Linux)
+      if: runner.os == 'Linux'
+      run: |
+        wget https://apt.llvm.org/llvm.sh
+        chmod +x llvm.sh
+        sudo ./llvm.sh 16
+        sudo apt-get update
+        sudo apt-get install -y clang-16 clang-tools-16
+        # 設定 clang-16 為預設
+        sudo update-alternatives --install /usr/bin/clang clang /usr/bin/clang-16 100
+        sudo update-alternatives --install /usr/bin/clang++ clang++ /usr/bin/clang++-16 100
+        clang --version
+
+    # --- Windows 特定的設定步驟 ---
+    # Windows 的 runner 已經預裝了 Visual Studio，Bazel 會自動找到它。
+    # 我們只需要啟用開發人員模式的符號連結支援。
+    - name: Enable developer mode symlinks (Windows)
+      if: runner.os == 'Windows'
+      run: git config --global core.symlinks true
+
+    # --- 開始編譯 ---
+    - name: Build (Linux)
+      if: runner.os == 'Linux'
+      working-directory: literlm_openai_api
+      # 使用我們之前驗證過的完整指令
+      run: |
+        bazel build \
+          --java_runtime_version=remotejdk_11 \
+          //main:openai_api_server
+
+    - name: Build (Windows)
+      if: runner.os == 'Windows'
+      working-directory: literlm_openai_api
+      shell: bash
+      run: |
+        bazel build --java_runtime_version=remotejdk_11 //main:openai_api_server
+
+    # --- 打包與上傳結果 ---
+    - name: Prepare artifact directory
+      shell: bash
+      run: |
+        mkdir -p dist
+        if [ "${{ runner.os }}" == "Linux" ]; then
+          cp literlm_openai_api/bazel-bin/main/openai_api_server dist/openai_api_server_linux
+        else
+          cp literlm_openai_api/bazel-bin/main/openai_api_server.exe dist/openai_api_server_windows.exe
+        fi
+
+    - name: Upload binary artifact
+      uses: actions/upload-artifact@v4
+      with:
+        name: openai-api-server-${{ matrix.os }}
+        path: dist/
