@@ -55,7 +55,7 @@ absl::StatusOr<lm::JsonMessage> ConvertToLiteRtJsonMessage(const nlohmann::json&
       std::string type = item["type"];
       if (type == "text" && item.contains("text")) {
         content_parts.push_back({{"type", "text"}, {"text", item["text"]}});
-      } else if (type == "image" && item.contains("blob")) {
+      } else if (type == "image" && item.contains("image_url")) {
           const auto& image_url_obj = item["image_url"];
           if (image_url_obj.contains("url")) {
               std::string url_data = image_url_obj["url"];
@@ -291,8 +291,8 @@ int main(int argc, char* argv[]) {
   const bool audio = absl::GetFlag(FLAGS_audio);
   auto engine_settings_or = lm::EngineSettings::CreateDefault(*model_assets_or,
                 use_gpu ? lm::Backend::GPU : lm::Backend::CPU,
-                image ? lm::Backend::GPU : std::nullopt,
-                audio ? lm::Backend::CPU : std::nullopt);
+                image ? std::optional<lm::Backend>(lm::Backend::GPU) : std::nullopt,
+                audio ? std::optional<lm::Backend>(lm::Backend::CPU) : std::nullopt);
   if (!engine_settings_or.ok()) {
       std::cerr << "Failed to create engine settings: " << engine_settings_or.status() << std::endl;
       return 1;
