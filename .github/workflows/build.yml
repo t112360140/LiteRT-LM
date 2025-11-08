@@ -12,9 +12,13 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  presubmit:
-    name: "Presubmit-Win"
-    runs-on: Windows_x64
+  build:
+    name: Build on ${{ matrix.os }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        # 同時在 Ubuntu 22.04 和最新版 Windows 上執行
+        os: [windows-latest] # ubuntu-22.04, 
     permissions:
       actions: write  # For gh cache delete.
       contents: write  # For gh release upload.
