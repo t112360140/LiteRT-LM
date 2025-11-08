@@ -28,6 +28,7 @@ ABSL_FLAG(std::string, model_path, "", "Path to the LiteRT-LM model file.");
 ABSL_FLAG(std::string, model_name, "", "The name of the model to be served. If empty, it's derived from model_path.");
 ABSL_FLAG(std::string, host, "0.0.0.0", "Host address to bind the server to.");
 ABSL_FLAG(int, port, 8080, "Port for the server to listen on.");
+ABSL_FLAG(bool, use_gpu, false, "Set the backend to GPU.");
 
 absl::StatusOr<lm::JsonMessage> ConvertToLiteRtJsonMessage(const nlohmann::json& messages) {
   if (!messages.is_array() || messages.empty()) {
@@ -104,7 +105,7 @@ class ApiServer {
 
   void Start(const std::string& host, int port) {
     // ADDED: CORS pre-flight and header middleware to fix cross-origin issues
-    svr_.Options("/v1/chat/completions", [](const httplib::Request &, httplib::Response &res) {
+    svr_.Options(R"(/.*)", [](const httplib::Request &, httplib::Response &res) {
         res.set_header("Access-Control-Allow-Origin", "*");
         res.set_header("Access-Control-Allow-Headers", "Content-Type, Authorization");
         res.set_header("Access-Control-Allow-Methods", "GET, POST, OPTIONS");
@@ -114,11 +115,13 @@ class ApiServer {
     // ADDED: /v1/models endpoint handler
     svr_.Get("/v1/models",
              [this](const httplib::Request& req, httplib::Response& res) {
+               res.set_header("Access-Control-Allow-Origin", "*");
                this->HandleGetModels(req, res);
              });
 
     svr_.Post("/v1/chat/completions",
               [this](const httplib::Request& req, httplib::Response& res) {
+                res.set_header("Access-Control-Allow-Origin", "*");
                 this->HandleChatCompletions(req, res);
               });
               
@@ -138,13 +141,11 @@ class ApiServer {
         {"owned_by", "user"}
       }}}
     };
-    res.set_header("Access-Control-Allow-Origin", "*");
     res.set_content(response_json.dump(), "application/json");
   }
 
   void HandleChatCompletions(const httplib::Request& req,
                              httplib::Response& res) {
-    res.set_header("Access-Control-Allow-Origin", "*");
     try {
       nlohmann::json request_json = nlohmann::json::parse(req.body);
       bool is_streaming = request_json.value("stream", false);
@@ -283,7 +284,10 @@ int main(int argc, char* argv[]) {
     return 1;
   }
 
-  auto engine_settings_or = lm::EngineSettings::CreateDefault(*model_assets_or, lm::Backend::CPU);
+  auto engine_settings_or = lm::EngineSettings::CreateDefault(*model_assets_or,
+                use_gpu ? lm::Backend::GPU : lm::Backend::CPU,
+                lm::Backend::CPU,
+                lm::Backend::CPU);
   if (!engine_settings_or.ok()) {
       std::cerr << "Failed to create engine settings: " << engine_settings_or.status() << std::endl;
       return 1;
