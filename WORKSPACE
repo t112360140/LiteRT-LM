@@ -18,6 +18,15 @@ load("@bazel_tools//tools/build_defs/repo:git.bzl", "git_repository")
 
 
 
+http_archive(
+    name = "bazel_platforms",
+    urls = [
+        "https://mirror.bazel.build/github.com/bazelbuild/platforms/releases/download/1.0.0/platforms-1.0.0.tar.gz",
+        "https://github.com/bazelbuild/platforms/releases/download/1.0.0/platforms-1.0.0.tar.gz",
+    ],
+    sha256 = "3384eb1c30762704fbe38e440204e114154086c8fc8a8c2e3e28441028c019a8",
+)
+
 git_repository(
     name = "com_github_yhirose_cpp_httplib",
     commit = "eacc1ca98e5fef25184c7d417e8417225e05e65d",
@@ -31,15 +40,6 @@ cc_library(
     # deps = ["@boringssl//:ssl"],
 )
     """,
-)
-
-http_archive(
-    name = "platforms",
-    urls = [
-        "https://mirror.bazel.build/github.com/bazelbuild/platforms/releases/download/1.0.0/platforms-1.0.0.tar.gz",
-        "https://github.com/bazelbuild/platforms/releases/download/1.0.0/platforms-1.0.0.tar.gz",
-    ],
-    sha256 = "3384eb1c30762704fbe38e440204e114154086c8fc8a8c2e3e28441028c019a8",
 )
 
 
