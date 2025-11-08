@@ -285,10 +285,11 @@ int main(int argc, char* argv[]) {
   }
 
   const bool use_gpu = absl::GetFlag(FLAGS_use_gpu);
+  const bool multimodal = absl::GetFlag(FLAGS_multimodal);
   auto engine_settings_or = lm::EngineSettings::CreateDefault(*model_assets_or,
                 use_gpu ? lm::Backend::GPU : lm::Backend::CPU,
-                lm::Backend::CPU,
-                lm::Backend::CPU);
+                multimodal ? lm::Backend::GPU : std::nullopt,
+                multimodal ? lm::Backend::CPU : std::nullopt);
   if (!engine_settings_or.ok()) {
       std::cerr << "Failed to create engine settings: " << engine_settings_or.status() << std::endl;
       return 1;
