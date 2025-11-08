@@ -3,7 +3,7 @@ cc_binary(
     srcs = ["main.cc"],
     deps = [
         "//runtime/engine:litert_lm_lib",
-        "@com_github_yhirose_cpp_httplib//:httplib",
+        "//literlm_openai_api/third_party/httplib",
         "@nlohmann_json//:json",
         "@com_google_absl//absl/flags:parse",
         "@com_google_absl//absl/flags:flag",
