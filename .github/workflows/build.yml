@@ -1,16 +1,11 @@
 name: "CI-Win"
-
 on:
   push:
     branches: [ main ]
   pull_request:
     branches: [ main ]
+  # 允許手動觸發
   workflow_dispatch:
-    inputs:
-      refresh_cache:
-        description: "Force refresh Bazel cache"
-        required: false
-        default: "false"
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.head_ref || github.ref }}
@@ -22,81 +17,96 @@ jobs:
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
+        # 同時在 Ubuntu 22.04 和最新版 Windows 上執行
         os: [windows-latest] # ubuntu-22.04, 
-
     permissions:
-      actions: write
-      contents: write
-
+      actions: write  # For gh cache delete.
+      contents: write  # For gh release upload.
     env:
-      # Clear ANDROID_NDK_HOME as Windows_x64 has NDK where jobs don't have permission for 
-      # androidndk rulesto create symlinks. 
+      # Clear ANDROID_NDK_HOME as Windows_x64 has NDK where jobs don't have permission for
+      # androidndk rulesto create symlinks.
       ANDROID_NDK_HOME:
-      GH_TOKEN: ${{ github.token }}
-      REFRESH_CACHE: ${{ github.event.inputs.refresh_cache }}
-
+      GH_TOKEN: ${{ github.token }}  # For gh release upload.
+      REFRESH_CACHE: ${{ github.event_name == 'schedule' ||
+                         (github.event_name == 'workflow_dispatch' && inputs.REFRESH_CACHE) }}
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Set up Bazel cache keys
+      - name : Set up cache keys and bazel output base.
         id: cache-keys
-        shell: bash
         run: |
-          # 根據 BUILD 檔與設定生成 hash，而不是 commit SHA
-          CACHE_KEY="bazel-${{ runner.os }}-${{ github.ref_name }}-${{ hashFiles('**/WORKSPACE', '**/.bazelrc', '**/BUILD*') }}"
-          echo "CACHE_KEY=$CACHE_KEY" >> $GITHUB_OUTPUT
-          echo "CACHE_RESTORE_KEY=bazel-${{ runner.os }}-${{ github.ref_name }}-" >> $GITHUB_OUTPUT
+          $CACHE_RESTORE_KEY_2="${{ github.workflow }}"
+          $CACHE_RESTORE_KEY_1="$CACHE_RESTORE_KEY_2-${{ hashFiles('**/WORKSPACE', '**/.bazelrc') }}"
+          $CACHE_RESTORE_KEY_0="$CACHE_RESTORE_KEY_1-${{ hashFiles('**/BUILD*') }}"
+          # If it's not a pull request, then it will be the same as $CACHE_RESTORE_KEY_1-.
+          $CACHE_RESTORE_KEY_HEAD="$CACHE_RESTORE_KEY_0-${{ github.event.pull_request.base.sha }}"
+          $BRANCH_NAME="${{ github.ref_name }}"
+          echo "CACHE_RESTORE_KEY_2=$CACHE_RESTORE_KEY_2" >> "$env:GITHUB_OUTPUT"
+          echo "CACHE_RESTORE_KEY_1=$CACHE_RESTORE_KEY_1" >> "$env:GITHUB_OUTPUT"
+          echo "CACHE_RESTORE_KEY_0=$CACHE_RESTORE_KEY_0" >> "$env:GITHUB_OUTPUT"
+          echo "CACHE_RESTORE_KEY_HEAD=$CACHE_RESTORE_KEY_HEAD" >> "$env:GITHUB_OUTPUT"
+          echo "CACHE_KEY=$CACHE_KEY" >> "$env:GITHUB_OUTPUT"
+          # D: is faster than C: for I/O.
+          $SHORT_SHA=$("${{ github.sha }}".SubString(0, 8))
+          echo "BAZEL_OUTPUT_BASE=D:/w-$SHORT_SHA" >> "$env:GITHUB_ENV"
 
-      - name: Restore bazel cache
+      - name: Clean build outputs if cache is being refreshed.
+        if: env.REFRESH_CACHE == 'true'
+        run: bazel --output_base="$env:BAZEL_OUTPUT_BASE" clean --expunge
+
+      - name: Restore bazel cache if cache is not being refreshed.
         id: bazel-cache
+        if: env.REFRESH_CACHE != 'true'
         uses: actions/cache/restore@v4
         with:
-          path: D:\bazel_cache
+          path: ~/.cache/bazel-windows
           key: ${{ steps.cache-keys.outputs.CACHE_KEY }}
           restore-keys: |
-            ${{ steps.cache-keys.outputs.CACHE_RESTORE_KEY }}
+            ${{ steps.cache-keys.outputs.CACHE_RESTORE_KEY_HEAD }}
+            ${{ steps.cache-keys.outputs.CACHE_RESTORE_KEY_0 }}-
+            ${{ steps.cache-keys.outputs.CACHE_RESTORE_KEY_1 }}-
+            ${{ steps.cache-keys.outputs.CACHE_RESTORE_KEY_2 }}-
 
-      - name: Print cache info
+      - name: Check cache hit
         run: |
-          echo "Cache hit: ${{ steps.bazel-cache.outputs.cache-hit }}"
-          echo "Cache key: ${{ steps.cache-keys.outputs.CACHE_KEY }}"
+          echo "Cache Hit: ${{ steps.bazel-cache.outputs.cache-hit }}"
+          echo "Cache Primary Key: ${{ steps.bazel-cache.outputs.cache-primary-key }}"
+          echo "Cache Matched Key: ${{ steps.bazel-cache.outputs.cache-matched-key }}"
 
-      - name: Set Bazel output base
-        shell: pwsh
+      - name: Run bazel build on Windows
         run: |
-          $SHORT_SHA="${{ github.sha }}".Substring(0, 8)
-          echo "BAZEL_OUTPUT_BASE=D:/w-$SHORT_SHA" >> $env:GITHUB_ENV
-
-      - name: Optionally clear Bazel cache
-        if: env.REFRESH_CACHE == 'true'
-        run: |
-          echo "Refreshing Bazel cache..."
-          Remove-Item -Recurse -Force D:\bazel_cache
-          bazel --output_base="$env:BAZEL_OUTPUT_BASE" clean --expunge
-
-      - name: Build with Bazel
-        run: |
-          bazel --output_base="$env:BAZEL_OUTPUT_BASE" ^
-            build --disk_cache=D:\bazel_cache ^
-            //... ^
+          bazel --output_base="$env:BAZEL_OUTPUT_BASE" `
+            build --disk_cache=~/.cache/bazel-windows `
+            //... `
             //literlm_openai_api:literlm_api_server
+
 
       - name: Prepare artifact directory
         shell: bash
         run: |
           mkdir -p dist
-          cp bazel-bin/literlm_openai_api/literlm_api_server.exe dist/literlm_api_server_windows.exe
+          if [ "${{ runner.os }}" == "Linux" ]; then
+            cp bazel-bin/literlm_openai_api/literlm_api_server dist/literlm_api_server_linux
+          else
+            cp bazel-bin/literlm_openai_api/literlm_api_server.exe dist/literlm_api_server_windows.exe
+          fi
 
-      - name: Upload artifact
+      - name: Upload binary artifact
         uses: actions/upload-artifact@v4
         with:
           name: literlm-api-server-${{ matrix.os }}
           path: dist/
 
-      - name: Save updated Bazel cache
-        if: env.REFRESH_CACHE == 'true' || steps.bazel-cache.outputs.cache-hit != 'true'
+
+      - name: Remove cache if cache is being refreshed.
+        if: env.REFRESH_CACHE == 'true'
+        continue-on-error: true  # Ignore errors when cache is not found.
+        run: gh cache delete ${{ steps.cache-keys.outputs.CACHE_KEY }}
+
+      - name: Save bazel cache if it's new or being refreshed.
         uses: actions/cache/save@v4
+        if: env.REFRESH_CACHE == 'true' || steps.bazel-cache.outputs.cache-hit != 'true'
         with:
-          path: D:\bazel_cache
+          path: ~/.cache/bazel-windows
           key: ${{ steps.cache-keys.outputs.CACHE_KEY }}
