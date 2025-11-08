@@ -22,11 +22,10 @@
 #include "runtime/engine/engine.h"
 #include "runtime/engine/io_types.h"
 
-// FIX: Do not use a 'using' alias for 'json' to avoid redefinition conflicts
-// with dependencies like minja. Use nlohmann::json directly.
 namespace lm = litert::lm;
 
 ABSL_FLAG(std::string, model_path, "", "Path to the LiteRT-LM model file.");
+ABSL_FLAG(std::string, model_name, "", "The name of the model to be served. If empty, it's derived from model_path.");
 ABSL_FLAG(std::string, host, "0.0.0.0", "Host address to bind the server to.");
 ABSL_FLAG(int, port, 8080, "Port for the server to listen on.");
 
@@ -54,9 +53,25 @@ absl::StatusOr<lm::JsonMessage> ConvertToLiteRtJsonMessage(const nlohmann::json&
       if (type == "text" && item.contains("text")) {
         content_parts.push_back({{"type", "text"}, {"text", item["text"]}});
       } else if (type == "image" && item.contains("blob")) {
-        content_parts.push_back({{"type", "image"}, {"blob", item["blob"]}});
-      } else if (type == "audio" && item.contains("blob")) {
-        content_parts.push_back({{"type", "audio"}, {"blob", item["blob"]}});
+          const auto& image_url_obj = item["image_url"];
+          if (image_url_obj.contains("url")) {
+              std::string url_data = image_url_obj["url"];
+              size_t comma_pos = url_data.find(',');
+              if (comma_pos != std::string::npos) {
+                  std::string base64_data = url_data.substr(comma_pos + 1);
+                  content_parts.push_back({{"type", "image"}, {"blob", base64_data}});
+              }
+          }
+      } else if (type == "audio_url" && item.contains("audio_url")) {
+          const auto& audio_url_obj = item["audio_url"];
+          if (audio_url_obj.contains("url")) {
+              std::string url_data = audio_url_obj["url"];
+              size_t comma_pos = url_data.find(',');
+              if (comma_pos != std::string::npos) {
+                  std::string base64_data = url_data.substr(comma_pos + 1);
+                  content_parts.push_back({{"type", "audio"}, {"blob", base64_data}});
+              }
+          }
       }
     }
     output_message["content"] = content_parts;
@@ -83,19 +98,54 @@ std::string format_sse_chunk(const std::string& id, const std::string& model_nam
 
 class ApiServer {
  public:
-  explicit ApiServer(std::unique_ptr<lm::Engine> engine)
-      : engine_(std::move(engine)) {}
+  // MODIFIED: Accept model_name in the constructor
+  explicit ApiServer(std::unique_ptr<lm::Engine> engine, const std::string& model_name)
+      : engine_(std::move(engine)), model_name_(model_name) {}
 
   void Start(const std::string& host, int port) {
+    // ADDED: CORS pre-flight and header middleware to fix cross-origin issues
+    svr_.Options("/v1/chat/completions", [](const httplib::Request &, httplib::Response &res) {
+        res.set_header("Access-Control-Allow-Origin", "*");
+        res.set_header("Access-Control-Allow-Headers", "Content-Type, Authorization");
+        res.set_header("Access-Control-Allow-Methods", "POST, OPTIONS");
+        res.status = 204;
+    });
+
+    svr_.after_request([](const httplib::Request &, httplib::Response &res) {
+        res.set_header("Access-Control-Allow-Origin", "*");
+        res.set_header("Access-Control-Allow-Headers", "Content-Type, Authorization");
+    });
+    
+    // ADDED: /v1/models endpoint handler
+    svr_.Get("/v1/models",
+             [this](const httplib::Request& req, httplib::Response& res) {
+               this->HandleGetModels(req, res);
+             });
+
     svr_.Post("/v1/chat/completions",
               [this](const httplib::Request& req, httplib::Response& res) {
                 this->HandleChatCompletions(req, res);
               });
+              
     std::cout << "Server starting on " << host << ":" << port << std::endl;
     svr_.listen(host.c_str(), port);
   }
 
  private:
+  // ADDED: Handler for the /v1/models endpoint
+  void HandleGetModels(const httplib::Request& req, httplib::Response& res) {
+    nlohmann::json response_json = {
+      {"object", "list"},
+      {"data", {{
+        {"id", model_name_},
+        {"object", "model"},
+        {"created", std::time(nullptr)},
+        {"owned_by", "user"}
+      }}}
+    };
+    res.set_content(response_json.dump(), "application/json");
+  }
+
   void HandleChatCompletions(const httplib::Request& req,
                              httplib::Response& res) {
     try {
@@ -113,7 +163,8 @@ class ApiServer {
         throw std::runtime_error(input_message_or.status().ToString());
       }
       
-      const std::string model_name = absl::GetFlag(FLAGS_model_path);
+      // MODIFIED: Use the member variable model_name_ instead of a flag
+      const std::string& model_name = model_name_;
 
       if (is_streaming) {
         HandleStreamingRequest(res, *conversation, *input_message_or, model_name);
@@ -205,15 +256,28 @@ class ApiServer {
 
   std::unique_ptr<lm::Engine> engine_;
   httplib::Server svr_;
+  std::string model_name_; // ADDED: Member to store model name
 };
 
 int main(int argc, char* argv[]) {
   absl::ParseCommandLine(argc, argv);
   absl::SetMinLogLevel(absl::LogSeverityAtLeast::kError);
+  
   const std::string model_path = absl::GetFlag(FLAGS_model_path);
   if (model_path.empty()) {
     std::cerr << "Error: --model_path is required." << std::endl;
     return 1;
+  }
+
+  // ADDED: Logic to determine the model name from flag or file path
+  std::string model_name = absl::GetFlag(FLAGS_model_name);
+  if (model_name.empty()) {
+    size_t last_slash_idx = model_path.find_last_of("/\\");
+    if (std::string::npos != last_slash_idx) {
+      model_name = model_path.substr(last_slash_idx + 1);
+    } else {
+      model_name = model_path;
+    }
   }
 
   auto model_assets_or = lm::ModelAssets::Create(model_path);
@@ -233,9 +297,12 @@ int main(int argc, char* argv[]) {
     std::cerr << "Failed to create engine: " << engine_or.status() << std::endl;
     return 1;
   }
+
   std::cout << "LiteRT-LM engine initialized successfully." << std::endl;
+  std::cout << "Serving model: " << model_name << std::endl; // ADDED: Log the model name being served
   
-  ApiServer server(std::move(*engine_or));
+  // MODIFIED: Pass the determined model name to the server
+  ApiServer server(std::move(*engine_or), model_name);
   server.Start(absl::GetFlag(FLAGS_host), absl::GetFlag(FLAGS_port));
 
   return 0;
