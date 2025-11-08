@@ -32,12 +32,20 @@ git_repository(
     commit = "eacc1ca98e5fef25184c7d417e8417225e05e65d",
     remote = "https://github.com/yhirose/cpp-httplib.git",
     build_file_content = """
+load("@bazel_tools//tools/build_defs/cc:action_names.bzl", "ACTION_NAMES")
+load("@bazel_tools//tools/cpp:cc_toolchain_config_lib.bzl", "feature", "flag_group", "flag_set")
+
 cc_library(
     name = "httplib",
     hdrs = ["httplib.h"],
     visibility = ["//visibility:public"],
-    # defines = ["CPPHTTPLIB_OPENSSL_SUPPORT"],
-    # deps = ["@boringssl//:ssl"],
+    # This copts will apply to httplib itself, solving the Windows 8 error.
+    copts = select({
+        "@bazel_platforms//os:windows": [
+            "/D_WIN32_WINNT=0x0A00",
+        ],
+        "//conditions:default": [],
+    }),
 )
     """,
 )
