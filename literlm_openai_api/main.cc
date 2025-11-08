@@ -154,22 +154,25 @@ class ApiServer {
 
       auto conversation_config_or = lm::ConversationConfig::CreateDefault(*engine_);
       if (!conversation_config_or.ok()) throw std::runtime_error(conversation_config_or.status().ToString());
+      
       auto conversation_or = lm::Conversation::Create(*engine_, *conversation_config_or);
       if (!conversation_or.ok()) throw std::runtime_error(conversation_or.status().ToString());
-      auto conversation = std::move(*conversation_or);
+      
+      auto conversation = std::make_shared<lm::Conversation>(std::move(*conversation_or));
 
       auto input_message_or = ConvertToLiteRtJsonMessage(request_json["messages"]);
       if (!input_message_or.ok()) {
         throw std::runtime_error(input_message_or.status().ToString());
       }
       
-      // MODIFIED: Use the member variable model_name_ instead of a flag
       const std::string& model_name = model_name_;
+      
+      auto input_message = *input_message_or;
 
       if (is_streaming) {
-        HandleStreamingRequest(res, *conversation, *input_message_or, model_name);
+        HandleStreamingRequest(res, conversation, input_message, model_name);
       } else {
-        HandleBlockingRequest(res, *conversation, *input_message_or, model_name);
+        HandleBlockingRequest(res, *conversation, input_message, model_name);
       }
 
     } catch (const nlohmann::json::parse_error& e) {
@@ -207,11 +210,12 @@ class ApiServer {
     res.set_content(response_json.dump(), "application/json");
   }
 
-  void HandleStreamingRequest(httplib::Response& res, lm::Conversation& conversation,
+  void HandleStreamingRequest(httplib::Response& res, 
+                              std::shared_ptr<lm::Conversation> conversation,
                               const lm::JsonMessage& input_message,
                               const std::string& model_name) {
     res.set_chunked_content_provider("text/event-stream", 
-      [&](size_t offset, httplib::DataSink& sink) -> bool {
+      [conversation, input_message, model_name](size_t offset, httplib::DataSink& sink) -> bool {
         
         std::mutex mtx;
         std::condition_variable cv;
@@ -238,7 +242,7 @@ class ApiServer {
           }
         };
         
-        absl::Status status = conversation.SendMessageAsync(input_message, callback);
+        absl::Status status = conversation->SendMessageAsync(input_message, callback);
         if (!status.ok()) {
             std::cerr << "Failed to start streaming generation: " << status << std::endl;
             sink.done();
