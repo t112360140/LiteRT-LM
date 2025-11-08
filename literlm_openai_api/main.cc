@@ -158,7 +158,7 @@ class ApiServer {
       auto conversation_or = lm::Conversation::Create(*engine_, *conversation_config_or);
       if (!conversation_or.ok()) throw std::runtime_error(conversation_or.status().ToString());
       
-      auto conversation = std::make_shared<lm::Conversation>(std::move(*conversation_or));
+      auto conversation = std::shared_ptr<lm::Conversation>(std::move(*conversation_or));
 
       auto input_message_or = ConvertToLiteRtJsonMessage(request_json["messages"]);
       if (!input_message_or.ok()) {
