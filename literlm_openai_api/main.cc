@@ -29,6 +29,7 @@ ABSL_FLAG(std::string, model_name, "", "The name of the model to be served. If e
 ABSL_FLAG(std::string, host, "0.0.0.0", "Host address to bind the server to.");
 ABSL_FLAG(int, port, 8080, "Port for the server to listen on.");
 ABSL_FLAG(bool, use_gpu, false, "Set the backend to GPU.");
+ABSL_FLAG(bool, multi, false, "Input with multimodal.");
 
 absl::StatusOr<lm::JsonMessage> ConvertToLiteRtJsonMessage(const nlohmann::json& messages) {
   if (!messages.is_array() || messages.empty()) {
@@ -285,11 +286,11 @@ int main(int argc, char* argv[]) {
   }
 
   const bool use_gpu = absl::GetFlag(FLAGS_use_gpu);
-  const bool multimodal = absl::GetFlag(FLAGS_multimodal);
+  const bool multi = absl::GetFlag(FLAGS_multi);
   auto engine_settings_or = lm::EngineSettings::CreateDefault(*model_assets_or,
                 use_gpu ? lm::Backend::GPU : lm::Backend::CPU,
-                multimodal ? lm::Backend::GPU : std::nullopt,
-                multimodal ? lm::Backend::CPU : std::nullopt);
+                multi ? lm::Backend::GPU : std::nullopt,
+                multi ? lm::Backend::CPU : std::nullopt);
   if (!engine_settings_or.ok()) {
       std::cerr << "Failed to create engine settings: " << engine_settings_or.status() << std::endl;
       return 1;
