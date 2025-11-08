@@ -7,6 +7,9 @@
 #include <vector>
 #include <variant>
 
+#define _WIN32_WINNT 0x0A00
+#include <windows.h>
+
 #include "absl/flags/flag.h"
 #include "absl/flags/parse.h"
 #include "absl/status/status.h"
