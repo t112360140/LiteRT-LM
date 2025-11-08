@@ -107,13 +107,8 @@ class ApiServer {
     svr_.Options("/v1/chat/completions", [](const httplib::Request &, httplib::Response &res) {
         res.set_header("Access-Control-Allow-Origin", "*");
         res.set_header("Access-Control-Allow-Headers", "Content-Type, Authorization");
-        res.set_header("Access-Control-Allow-Methods", "POST, OPTIONS");
+        res.set_header("Access-Control-Allow-Methods", "GET, POST, OPTIONS");
         res.status = 204;
-    });
-
-    svr_.after_request([](const httplib::Request &, httplib::Response &res) {
-        res.set_header("Access-Control-Allow-Origin", "*");
-        res.set_header("Access-Control-Allow-Headers", "Content-Type, Authorization");
     });
     
     // ADDED: /v1/models endpoint handler
@@ -143,11 +138,13 @@ class ApiServer {
         {"owned_by", "user"}
       }}}
     };
+    res.set_header("Access-Control-Allow-Origin", "*");
     res.set_content(response_json.dump(), "application/json");
   }
 
   void HandleChatCompletions(const httplib::Request& req,
                              httplib::Response& res) {
+    res.set_header("Access-Control-Allow-Origin", "*");
     try {
       nlohmann::json request_json = nlohmann::json::parse(req.body);
       bool is_streaming = request_json.value("stream", false);
