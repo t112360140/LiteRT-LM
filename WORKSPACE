@@ -27,28 +27,28 @@ http_archive(
     sha256 = "3384eb1c30762704fbe38e440204e114154086c8fc8a8c2e3e28441028c019a8",
 )
 
-git_repository(
-    name = "com_github_yhirose_cpp_httplib",
-    commit = "eacc1ca98e5fef25184c7d417e8417225e05e65d",
-    remote = "https://github.com/yhirose/cpp-httplib.git",
-    build_file_content = """
-load("@bazel_tools//tools/build_defs/cc:action_names.bzl", "ACTION_NAMES")
-load("@bazel_tools//tools/cpp:cc_toolchain_config_lib.bzl", "feature", "flag_group", "flag_set")
+# git_repository(
+#     name = "com_github_yhirose_cpp_httplib",
+#     commit = "eacc1ca98e5fef25184c7d417e8417225e05e65d",
+#     remote = "https://github.com/yhirose/cpp-httplib.git",
+#     build_file_content = """
+# load("@bazel_tools//tools/build_defs/cc:action_names.bzl", "ACTION_NAMES")
+# load("@bazel_tools//tools/cpp:cc_toolchain_config_lib.bzl", "feature", "flag_group", "flag_set")
 
-cc_library(
-    name = "httplib",
-    hdrs = ["httplib.h"],
-    visibility = ["//visibility:public"],
-    # This copts will apply to httplib itself, solving the Windows 8 error.
-    copts = select({
-        "@bazel_platforms//os:windows": [
-            "/D_WIN32_WINNT=0x0A00",
-        ],
-        "//conditions:default": [],
-    }),
-)
-    """,
-)
+# cc_library(
+#     name = "httplib",
+#     hdrs = ["httplib.h"],
+#     visibility = ["//visibility:public"],
+#     # This copts will apply to httplib itself, solving the Windows 8 error.
+#     copts = select({
+#         "@bazel_platforms//os:windows": [
+#             "/D_WIN32_WINNT=0x0A00",
+#         ],
+#         "//conditions:default": [],
+#     }),
+# )
+#     """,
+# )
 
 
 
