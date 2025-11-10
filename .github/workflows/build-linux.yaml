@@ -80,7 +80,7 @@ jobs:
         run: |
           mkdir -p dist
           if [ "${{ runner.os }}" == "Linux" ]; then
-            cp bazel-bin/literlm_openai_api/literlm_api_server dist/literlm_api_server_linux
+            cp bazel-bin/literlm_openai_api/literlm_api_server_linux dist/literlm_api_server_linux
           else
             cp bazel-bin/literlm_openai_api/literlm_api_server.exe dist/literlm_api_server_windows.exe
           fi
