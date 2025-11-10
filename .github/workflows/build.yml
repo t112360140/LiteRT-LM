@@ -80,7 +80,6 @@ jobs:
         run: |
           bazel --output_base="$env:BAZEL_OUTPUT_BASE" `
             build --disk_cache=~/.cache/bazel-windows `
-            //... `
             //literlm_openai_api:literlm_api_server
 
 
