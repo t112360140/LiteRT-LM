@@ -12,9 +12,12 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  presubmit:
-    name: "Presubmit"
-    runs-on: LiteRT_Linux_x64
+  build:
+    name: Build on ${{ matrix.os }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: [ubuntu-latest]
     permissions:
       actions: write  # For gh cache delete.
       contents: write  # For gh release upload.
@@ -77,12 +80,16 @@ jobs:
         shell: bash
         run: |
           mkdir -p dist
-          cp bazel-bin/literlm_openai_api/literlm_api_server dist/literlm_api_server_linux
+          if [ "${{ runner.os }}" == "Linux" ]; then
+            cp bazel-bin/literlm_openai_api/literlm_api_server dist/literlm_api_server_linux
+          else
+            cp bazel-bin/literlm_openai_api/literlm_api_server.exe dist/literlm_api_server_windows.exe
+          fi
 
       - name: Upload binary artifact
         uses: actions/upload-artifact@v4
         with:
-          name: literlm-api-server-linux
+          name: literlm-api-server-${{ matrix.os }}
           path: dist/
 
 
