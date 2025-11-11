@@ -72,7 +72,21 @@ jobs:
       - name: Run bazel build on Linux
         run: |
           bazel build --disk_cache=~/.cache/bazel-linux --define=litert_link_capi_so=true --define=resolve_symbols_in_exec=false \
-            //literlm_openai_api:literlm_api_server_linux 
+            //literlm_openai_api:literlm_api_server_linux
+
+
+      - name: Remove cache if cache is being refreshed.
+        if: env.REFRESH_CACHE == 'true'
+        continue-on-error: true  # Ignore errors when cache is not found.
+        run: gh cache delete ${{ steps.cache-keys.outputs.CACHE_KEY }}
+
+      - name: Save bazel cache if it's new or being refreshed.
+        uses: actions/cache/save@v4
+        if: env.REFRESH_CACHE == 'true' || steps.bazel-cache.outputs.cache-hit != 'true'
+        with:
+          path: ~/.cache/bazel-linux
+          key: ${{ steps.cache-keys.outputs.CACHE_KEY }}
+
 
 
       - name: Prepare artifact directory
@@ -92,16 +106,3 @@ jobs:
         with:
           name: literlm-api-server-${{ matrix.os }}
           path: dist/
-
-
-      - name: Remove cache if cache is being refreshed.
-        if: env.REFRESH_CACHE == 'true'
-        continue-on-error: true  # Ignore errors when cache is not found.
-        run: gh cache delete ${{ steps.cache-keys.outputs.CACHE_KEY }}
-
-      - name: Save bazel cache if it's new or being refreshed.
-        uses: actions/cache/save@v4
-        if: env.REFRESH_CACHE == 'true' || steps.bazel-cache.outputs.cache-hit != 'true'
-        with:
-          path: ~/.cache/bazel-linux
-          key: ${{ steps.cache-keys.outputs.CACHE_KEY }}
