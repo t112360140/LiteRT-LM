@@ -38,6 +38,10 @@ jobs:
           sudo ./llvm.sh 16
           sudo apt-get install -y clang-16
           
+          echo "Setting clang-16 as the default using update-alternatives..."
+          sudo update-alternatives --install /usr/bin/clang clang /usr/bin/clang-16 100
+          sudo update-alternatives --install /usr/bin/clang++ clang++ /usr/bin/clang++-16 100
+          
           # Step 3: (Good practice) Verify that clang-14 is gone and clang-16 is default
           echo "Verifying clang version after changes:"
           clang --version
