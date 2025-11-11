@@ -85,7 +85,7 @@ jobs:
 
       - name: Run bazel build on Linux
         run: |
-          bazel build --disk_cache=~/.cache/bazel-linux \
+          CC=clang-16 CXX=clang++-16 bazel build --disk_cache=~/.cache/bazel-linux \
             //literlm_openai_api:literlm_api_server_linux
 
 
