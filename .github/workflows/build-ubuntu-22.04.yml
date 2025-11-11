@@ -96,7 +96,7 @@ jobs:
       - name: Run bazel build on Linux
         run: |
           bazel build --disk_cache=~/.cache/bazel-linux --define=litert_link_capi_so=true --define=resolve_symbols_in_exec=false \
-            //literlm_openai_api:literlm_api_server_linux
+            //literlm_openai_api:litertlm_api_server_linux
 
 
       - name: Remove cache if cache is being refreshed.
@@ -117,10 +117,10 @@ jobs:
         run: |
           mkdir -p dist
           if [ "${{ runner.os }}" == "Linux" ]; then
-            cp bazel-bin/literlm_openai_api/literlm_api_server_linux dist/literlm_api_server_linux
+            cp bazel-bin/literlm_openai_api/litertlm_api_server_linux dist/litertlm_api_server_linux
             cp prebuilt/linux_x86_64/* dist/
           else
-            cp bazel-bin/literlm_openai_api/literlm_api_server.exe dist/literlm_api_server_windows.exe
+            cp bazel-bin/literlm_openai_api/litertlm_api_server.exe dist/litertlm_api_server_windows.exe
             cp prebuilt/windows_x86_64/* dist/
           fi
 

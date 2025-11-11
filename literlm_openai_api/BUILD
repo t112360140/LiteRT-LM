@@ -1,5 +1,5 @@
 cc_binary(
-    name = "literlm_api_server",
+    name = "litertlm_api_server",
     srcs = ["main.cc"],
     copts = ["/D_WIN32_WINNT=0x0A00"],
     deps = [
@@ -14,7 +14,7 @@ cc_binary(
 )
 
 cc_binary(
-    name = "literlm_api_server_linux",
+    name = "litertlm_api_server_linux",
     srcs = ["main.cc"],
     deps = [
         "//runtime/engine:litert_lm_lib",
