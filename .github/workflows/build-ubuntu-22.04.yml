@@ -26,21 +26,23 @@ jobs:
       REFRESH_CACHE: ${{ github.event_name == 'schedule' ||
                          (github.event_name == 'workflow_dispatch' && inputs.REFRESH_CACHE) }}
     steps:
-      - name: Install latest Clang
+      - name: Install Clang 16 and Forcefully Remove Clang 14
         run: |
+          # Step 1: Uninstall the package that provides /usr/lib/llvm-14/bin/clang
+          sudo apt-get remove -y clang-14 libclang-common-14-dev
+          sudo apt-get autoremove -y
+          
+          # Step 2: Install the desired version
           wget https://apt.llvm.org/llvm.sh
           chmod +x llvm.sh
           sudo ./llvm.sh 16
           sudo apt-get install -y clang-16
-        shell: bash
-      
-      - name: Set Clang 16 as default compiler
-        run: |
-          # Use update-alternatives to manage default clang/clang++
-          sudo update-alternatives --install /usr/bin/clang clang /usr/bin/clang-16 100
-          sudo update-alternatives --install /usr/bin/clang++ clang++ /usr/bin/clang++-16 100
-          # (Optional) Verify the change
+          
+          # Step 3: (Good practice) Verify that clang-14 is gone and clang-16 is default
+          echo "Verifying clang version after changes:"
           clang --version
+          echo "Checking if clang-14 exists:"
+          ls /usr/lib/llvm-14/bin/clang || echo "Clang 14 not found, as expected."
         shell: bash
 
   
