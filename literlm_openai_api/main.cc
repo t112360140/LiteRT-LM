@@ -7,6 +7,8 @@
 #include <vector>
 #include <variant>
 
+#include <time.h>
+
 #ifdef _WIN32
   #define _WIN32_WINNT 0x0A00
   #include <windows.h>
@@ -163,7 +165,7 @@ class ApiServer {
       int top_k = request_json.value("top_k", 40);
       float top_p = request_json.value("top_p", 0.95f);
       int max_tokens = request_json.value("max_tokens", 4096);
-      int seed = request_json.value("seed", 0);
+      int seed = request_json.value("seed", -1);
 
       auto conversation_config = std::move(*conversation_config_or);
       auto session_config = conversation_config.GetSessionConfig();
@@ -174,6 +176,7 @@ class ApiServer {
       sampler_params.set_k(top_k);
       sampler_params.set_p(top_p);
       if (seed >= 0) sampler_params.set_seed(seed);
+      else if (seed == -1) sampler_params.set_seed(std::time(nullptr));
 
       auto updated_conversation_config_or = lm::ConversationConfig::CreateFromSessionConfig(
           *engine_, session_config);
@@ -227,7 +230,6 @@ class ApiServer {
       if (message_or.ok()) {
           const auto& json_message = std::get<lm::JsonMessage>(*message_or);
           if (json_message.is_null()) {
-              // is_null() 表示串流結束
               stream_finished = true;
           } else {
               if (json_message.contains("content") && 
