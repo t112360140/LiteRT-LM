@@ -118,7 +118,6 @@ class ApiServer {
         res.status = 204;
     });
     
-    // ADDED: /v1/models endpoint handler
     svr_.Get("/v1/models",
              [this](const httplib::Request& req, httplib::Response& res) {
                res.set_header("Access-Control-Allow-Origin", "*");
@@ -176,7 +175,7 @@ class ApiServer {
       if (is_streaming) {
         HandleStreamingRequest(res, conversation, input_message, model_name);
       } else {
-        HandleBlockingRequest(res, *conversation, input_message, model_name);
+        HandleBlockingRequest(res, conversation, input_message, model_name);
       }
 
     } catch (const nlohmann::json::parse_error& e) {
@@ -188,10 +187,11 @@ class ApiServer {
     }
   }
 
-  void HandleBlockingRequest(httplib::Response& res, lm::Conversation& conversation,
+  void HandleBlockingRequest(httplib::Response& res,
+                             std::shared_ptr<lm::Conversation> conversation,
                              const lm::JsonMessage& input_message,
                              const std::string& model_name) {
-    absl::StatusOr<lm::Message> response_message_or = conversation.SendMessage(input_message);
+    absl::StatusOr<lm::Message> response_message_or = conversation->SendMessage(input_message);
     if (!response_message_or.ok()) {
       throw std::runtime_error("Model inference failed: " + response_message_or.status().ToString());
     }
