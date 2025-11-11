@@ -50,7 +50,7 @@ jobs:
           echo "CACHE_KEY=$CACHE_KEY" >> "$env:GITHUB_OUTPUT"
           # D: is faster than C: for I/O.
           # $SHORT_SHA=$("${{ github.sha }}".SubString(0, 8))
-          $SHORT_SHA=$("${{ github.ref_name }}"
+          $SHORT_SHA=$("${{ github.ref_name }}")
           echo "BAZEL_OUTPUT_BASE=D:/w-$SHORT_SHA" >> "$env:GITHUB_ENV"
 
       - name: Clean build outputs if cache is being refreshed.
