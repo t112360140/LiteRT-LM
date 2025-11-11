@@ -191,13 +191,49 @@ class ApiServer {
                              std::shared_ptr<lm::Conversation> conversation,
                              const lm::JsonMessage& input_message,
                              const std::string& model_name) {
-    absl::StatusOr<lm::Message> response_message_or = conversation->SendMessage(input_message);
-    if (!response_message_or.ok()) {
-      throw std::runtime_error("Model inference failed: " + response_message_or.status().ToString());
+    std::mutex mtx;
+    std::condition_variable cv;
+    bool stream_finished = false;
+    std::string full_reply_content;
+    absl::Status error_status;
+
+    auto callback = 
+        [&](absl::StatusOr<lm::Message> message_or) {
+      std::lock_guard<std::mutex> lock(mtx);
+      if (message_or.ok()) {
+          const auto& json_message = std::get<lm::JsonMessage>(*message_or);
+          if (json_message.is_null()) {
+              // is_null() 表示串流結束
+              stream_finished = true;
+          } else {
+              if (json_message.contains("content") && 
+                  json_message["content"].is_array() && 
+                  !json_message["content"].empty() &&
+                  json_message["content"][0].contains("text")) {
+                full_reply_content += json_message["content"][0]["text"].get<std::string>();
+              }
+          }
+      } else {
+        error_status = message_or.status();
+        stream_finished = true;
+      }
+      
+      if (stream_finished) {
+        cv.notify_one();
+      }
+    };
+
+    absl::Status status = conversation->SendMessageAsync(input_message, callback);
+    if (!status.ok()) {
+        throw std::runtime_error("Failed to start generation: " + status.ToString());
     }
     
-    const auto& json_message = std::get<lm::JsonMessage>(*response_message_or);
-    std::string model_reply = json_message["content"][0]["text"];
+    std::unique_lock<std::mutex> lock(mtx);
+    cv.wait(lock, [&] { return stream_finished; });
+
+    if (!error_status.ok()) {
+        throw std::runtime_error("Model inference failed: " + error_status.ToString());
+    }
 
     nlohmann::json response_json = {
         {"id", "chatcmpl-local-blocking"},
@@ -206,13 +242,13 @@ class ApiServer {
         {"model", model_name},
         {"choices", {{
              {"index", 0},
-             {"message", {{"role", "assistant"}, {"content", model_reply}}},
+             {"message", {{"role", "assistant"}, {"content", full_reply_content}}},
              {"finish_reason", "stop"},
          }}},
         {"usage", {{"prompt_tokens", 0}, {"completion_tokens", 0}, {"total_tokens", 0}}}};
     
     res.set_content(response_json.dump(), "application/json");
-  }
+}
 
   void HandleStreamingRequest(httplib::Response& res, 
                               std::shared_ptr<lm::Conversation> conversation,
