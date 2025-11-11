@@ -25,4 +25,5 @@ cc_binary(
         "@com_google_absl//absl/status:statusor",
         "@com_google_absl//absl/strings",
     ],
+    linkopts = ["-Wl,-rpath,'$ORIGIN'"],
 )
