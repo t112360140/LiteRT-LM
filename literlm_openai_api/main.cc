@@ -157,8 +157,32 @@ class ApiServer {
 
       auto conversation_config_or = lm::ConversationConfig::CreateDefault(*engine_);
       if (!conversation_config_or.ok()) throw std::runtime_error(conversation_config_or.status().ToString());
+
+      //-------
+      float temperature = request_json.value("temperature", 1.0f);
+      int top_k = request_json.value("top_k", 40);
+      float top_p = request_json.value("top_p", 0.95f);
+      int max_tokens = request_json.value("max_tokens", 4096);
+      int seed = request_json.value("seed", 0);
+
+      auto conversation_config = std::move(*conversation_config_or);
+      auto session_config = conversation_config.GetSessionConfig();
+
+      auto& sampler_params = session_config.GetMutableSamplerParams();
+      sampler_params.set_type(lm::proto::SamplerParameters::TOP_P);
+      sampler_params.set_temperature(temperature);
+      sampler_params.set_k(top_k);
+      sampler_params.set_p(top_p);
+      if (seed >= 0) sampler_params.set_seed(seed);
+
+      auto updated_conversation_config_or = lm::ConversationConfig::CreateFromSessionConfig(
+          *engine_, session_config);
+      if (!updated_conversation_config_or.ok()) throw std::runtime_error(updated_conversation_config_or.status().ToString());
+
+      auto conversation_or = lm::Conversation::Create(*engine_, *updated_conversation_config_or);
+      //-------
       
-      auto conversation_or = lm::Conversation::Create(*engine_, *conversation_config_or);
+      // auto conversation_or = lm::Conversation::Create(*engine_, *conversation_config_or);
       if (!conversation_or.ok()) throw std::runtime_error(conversation_or.status().ToString());
       
       auto conversation = std::shared_ptr<lm::Conversation>(std::move(*conversation_or));

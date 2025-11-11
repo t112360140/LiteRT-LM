@@ -79,7 +79,7 @@ jobs:
       - name: Run bazel build on Windows
         run: |
           bazel --output_base="$env:BAZEL_OUTPUT_BASE" `
-            build --disk_cache=~/.cache/bazel-windows --define=litert_link_capi_so=true --define=resolve_symbols_in_exec=false `
+            build --disk_cache=~/.cache/bazel-windows `
             //literlm_openai_api:litertlm_api_server
 
 
