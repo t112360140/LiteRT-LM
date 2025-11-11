@@ -26,6 +26,20 @@ jobs:
       REFRESH_CACHE: ${{ github.event_name == 'schedule' ||
                          (github.event_name == 'workflow_dispatch' && inputs.REFRESH_CACHE) }}
     steps:
+      - name: Install latest Clang
+        run: |
+          wget https://apt.llvm.org/llvm.sh
+          chmod +x llvm.sh
+          sudo ./llvm.sh 16
+          sudo apt-get install -y clang-16
+        shell: bash
+      
+      - name: Set Clang 16 as default
+        run: |
+          echo "CC=clang-16" >> $GITHUB_ENV
+          echo "CXX=clang++-16" >> $GITHUB_ENV
+
+  
       - name: Checkout code
         uses: actions/checkout@v4
 
