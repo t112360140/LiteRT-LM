@@ -34,10 +34,14 @@ jobs:
           sudo apt-get install -y clang-16
         shell: bash
       
-      - name: Set Clang 16 as default
+      - name: Set Clang 16 as default compiler
         run: |
-          echo "CC=clang-16" >> $GITHUB_ENV
-          echo "CXX=clang++-16" >> $GITHUB_ENV
+          # Use update-alternatives to manage default clang/clang++
+          sudo update-alternatives --install /usr/bin/clang clang /usr/bin/clang-16 100
+          sudo update-alternatives --install /usr/bin/clang++ clang++ /usr/bin/clang++-16 100
+          # (Optional) Verify the change
+          clang --version
+        shell: bash
 
   
       - name: Checkout code
@@ -85,7 +89,7 @@ jobs:
 
       - name: Run bazel build on Linux
         run: |
-          CC=clang-16 CXX=clang++-16 bazel build --disk_cache=~/.cache/bazel-linux \
+          bazel build --disk_cache=~/.cache/bazel-linux \
             //literlm_openai_api:literlm_api_server_linux
 
 
