@@ -30,7 +30,7 @@ ABSL_FLAG(std::string, model_path, "", "Path to the LiteRT-LM model file.");
 ABSL_FLAG(std::string, model_name, "", "The name of the model to be served. If empty, it's derived from model_path.");
 ABSL_FLAG(std::string, host, "0.0.0.0", "Host address to bind the server to.");
 ABSL_FLAG(int, port, 8080, "Port for the server to listen on.");
-ABSL_FLAG(int, verbose, 0, "Set the logging verbosity level.");
+ABSL_FLAG(bool, verbose, false, "Set the logging verbosity level.");
 ABSL_FLAG(bool, use_gpu, false, "Set the backend to GPU.");
 ABSL_FLAG(bool, image, false, "Input with Image.");
 ABSL_FLAG(bool, audio, false, "Input with Audio.");
@@ -269,8 +269,8 @@ class ApiServer {
 
 int main(int argc, char* argv[]) {
   absl::ParseCommandLine(argc, argv);
-  const int verbose = absl::GetFlag(FLAGS_verbose);
-  if(verbose == 0) absl::SetMinLogLevel(absl::LogSeverityAtLeast::kError);
+  const bool verbose = absl::GetFlag(FLAGS_verbose);
+  if(!verbose) absl::SetMinLogLevel(absl::LogSeverityAtLeast::kError);
   
   const std::string model_path = absl::GetFlag(FLAGS_model_path);
   if (model_path.empty()) {
