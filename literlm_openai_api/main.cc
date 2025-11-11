@@ -110,9 +110,10 @@ class ApiServer {
 
   void Start(const std::string& host, int port) {
     // ADDED: CORS pre-flight and header middleware to fix cross-origin issues
-    svr_.Options(R"(/.*)", [](const httplib::Request &, httplib::Response &res) {
+    svr_.Options(R"(/.*)", [](const httplib::Request &req, httplib::Response &res) {
         res.set_header("Access-Control-Allow-Origin", "*");
-        res.set_header("Access-Control-Allow-Headers", "Content-Type, Authorization");
+        if (req.has_header("Access-Control-Request-Headers"))
+            res.set_header("Access-Control-Allow-Headers", req.get_header_value("Access-Control-Request-Headers"));
         res.set_header("Access-Control-Allow-Methods", "GET, POST, OPTIONS");
         res.status = 204;
     });
